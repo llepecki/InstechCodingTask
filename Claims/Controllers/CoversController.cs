@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Net.Mime;
 using Claims.Auditing;
 using Claims.Services;
 using Claims.Storage;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claims.Controllers;
@@ -21,12 +23,13 @@ public class CoversController : ControllerBase
         _auditer = auditer;
     }
 
-    [HttpPost]
+    [HttpHead]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public ObjectResult ComputePremium(DateOnly startDate, DateOnly endDate, CoverType coverType)
+    public NoContentResult ComputePremium(DateOnly startDate, DateOnly endDate, CoverType coverType)
     {
         var premium = _computePremium.Compute(startDate, endDate, coverType);
-        return Ok(new { premium });
+        Request.Headers.Add("X-Premium", premium.ToString(CultureInfo.InvariantCulture));
+        return NoContent();
     }
 
     [HttpGet]

@@ -28,14 +28,14 @@ public class AuditWorker : BackgroundService
         }
     }
 
-    private Task FlushAudits()
+    private async Task FlushAudits()
     {
-        using var scope = _serviceScopeFactory.CreateScope();
+        await using var scope = _serviceScopeFactory.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<AuditContext>();
 
         context.ClaimAudits.AddRange(_auditReader.ReadClaimAudits());
         context.CoverAudits.AddRange(_auditReader.ReadCoverAudits());
 
-        return context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 }
