@@ -1,31 +1,41 @@
-using System.Configuration;
 using System.Text.Json.Serialization;
 using Claims.Auditing;
-using Claims.Controllers;
+using Claims.Services;
+using Claims.Storage;
+using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.Internal;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers().AddJsonOptions(x =>
-    {
-        x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    }
-);
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(x => x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-builder.Services.AddSingleton(
-    InitializeCosmosClientInstanceAsync(builder.Configuration.GetSection("CosmosDb")).GetAwaiter().GetResult());
+string account = builder.Configuration.GetSection("CosmosDB").GetValue<string>("Account") ?? throw new ArgumentNullException("CosmosDB Account is not configured");
+string key = builder.Configuration.GetSection("CosmosDB").GetValue<string>("Key") ?? throw new ArgumentNullException("CosmosDB Key is not configured");
+string databaseName = builder.Configuration.GetSection("CosmosDB").GetValue<string>("DatabaseName") ?? throw new ArgumentNullException("CosmosDB DatabaseName is not configured");
+
+builder.Services
+    .AddSingleton(new CosmosClient(account, key))
+    .AddSingleton(p => new CosmosRepository<ClaimDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Claim"))
+    .AddSingleton(p => new CosmosRepository<CoverDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Cover"));
 
 builder.Services.AddDbContext<AuditContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddSingleton<IComputePremium, ComputePremium>();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services
+    .AddHostedService<AuditWorker>()
+    .AddSingleton<Auditer>()
+    .AddSingleton<IAuditer>(p => p.GetRequiredService<Auditer>())
+    .AddSingleton<IAuditReader>(p => p.GetRequiredService<Auditer>());
+
+builder.Services
+    .AddEndpointsApiExplorer()
+    .AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -33,31 +43,23 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AuditContext>();
-    context.Database.Migrate();
+    await context.Database.MigrateAsync();
 }
 
-app.Run();
-
-static async Task<CosmosDbService> InitializeCosmosClientInstanceAsync(IConfigurationSection configurationSection)
+using (var scope = app.Services.CreateScope())
 {
-    string databaseName = configurationSection.GetSection("DatabaseName").Value;
-    string containerName = configurationSection.GetSection("ContainerName").Value;
-    string account = configurationSection.GetSection("Account").Value;
-    string key = configurationSection.GetSection("Key").Value;
-    Microsoft.Azure.Cosmos.CosmosClient client = new Microsoft.Azure.Cosmos.CosmosClient(account, key);
-    CosmosDbService cosmosDbService = new CosmosDbService(client, databaseName, containerName);
-    Microsoft.Azure.Cosmos.DatabaseResponse database = await client.CreateDatabaseIfNotExistsAsync(databaseName);
-    await database.Database.CreateContainerIfNotExistsAsync(containerName, "/id");
-
-    return cosmosDbService;
+    var cosmosClient = scope.ServiceProvider.GetRequiredService<CosmosClient>();
+    var database = await cosmosClient.CreateDatabaseIfNotExistsAsync(databaseName);
+    await database.Database.CreateContainerIfNotExistsAsync("Claim", "/id");
+    await database.Database.CreateContainerIfNotExistsAsync("Cover", "/id");
 }
+
+await app.RunAsync();
 
 public partial class Program { }

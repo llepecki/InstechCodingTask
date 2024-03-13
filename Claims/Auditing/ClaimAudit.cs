@@ -1,13 +1,9 @@
-﻿namespace Claims.Auditing
+﻿namespace Claims.Auditing;
+
+public record ClaimAudit
 {
-    public class ClaimAudit
-    {
-        public int Id { get; set; }
-
-        public string? ClaimId { get; set; }
-
-        public DateTime Created { get; set; }
-
-        public string? HttpRequestType { get; set; }
-    }
+    public int Id { get; init; } = 0;
+    public string? ClaimId { get; init; }
+    public DateTime Created { get; init; }
+    public string? HttpRequestType { get; init; }
 }

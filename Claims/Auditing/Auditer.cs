@@ -1,38 +1,63 @@
-﻿namespace Claims.Auditing
+using System.Collections.Concurrent;
+
+namespace Claims.Auditing;
+
+public interface IAuditer
 {
-    public class Auditer
+    void AuditClaim(string id, string httpRequestType);
+
+    void AuditCover(string id, string httpRequestType);
+}
+
+public interface IAuditReader
+{
+    IReadOnlyCollection<ClaimAudit> ReadClaimAudits();
+
+    IReadOnlyCollection<CoverAudit> ReadCoverAudits();
+}
+
+public class Auditer : IAuditer, IAuditReader
+{
+    private readonly ConcurrentQueue<ClaimAudit> _claimAudits = new();
+    private readonly ConcurrentQueue<CoverAudit> _coverAudits = new();
+
+    public void AuditClaim(string id, string httpRequestType) => _claimAudits.Enqueue(new ClaimAudit
     {
-        private readonly AuditContext _auditContext;
+        ClaimId = id,
+        Created = DateTime.UtcNow,
+        HttpRequestType = httpRequestType
+    });
 
-        public Auditer(AuditContext auditContext)
-        {
-            _auditContext = auditContext;
-        }
+    public void AuditCover(string id, string httpRequestType) => _coverAudits.Enqueue(new CoverAudit
+    {
+        CoverId = id,
+        Created = DateTime.UtcNow,
+        HttpRequestType = httpRequestType
+    });
 
-        public void AuditClaim(string id, string httpRequestType)
+    public IReadOnlyCollection<ClaimAudit> ReadClaimAudits()
+    {
+        IEnumerable<ClaimAudit> GetClaimAuditsInner()
         {
-            var claimAudit = new ClaimAudit()
+            while (_claimAudits.TryDequeue(out var audit))
             {
-                Created = DateTime.Now,
-                HttpRequestType = httpRequestType,
-                ClaimId = id
-            };
-
-            _auditContext.Add(claimAudit);
-            _auditContext.SaveChanges();
+                yield return audit;
+            }
         }
-        
-        public void AuditCover(string id, string httpRequestType)
+
+        return GetClaimAuditsInner().ToArray();
+    }
+
+    public IReadOnlyCollection<CoverAudit> ReadCoverAudits()
+    {
+        IEnumerable<CoverAudit> GetCoverAuditsInner()
         {
-            var coverAudit = new CoverAudit()
+            while (_coverAudits.TryDequeue(out var audit))
             {
-                Created = DateTime.Now,
-                HttpRequestType = httpRequestType,
-                CoverId = id
-            };
-
-            _auditContext.Add(coverAudit);
-            _auditContext.SaveChanges();
+                yield return audit;
+            }
         }
+
+        return GetCoverAuditsInner().ToArray();
     }
 }

@@ -1,23 +1,37 @@
+using Claims.Storage;
 using Newtonsoft.Json;
 
 namespace Claims;
 
-public class Cover
+public record CoverReadModel(
+    [property: JsonProperty(PropertyName = "id")] string Id,
+    [property: JsonProperty(PropertyName = "startDate")] DateOnly StartDate,
+    [property: JsonProperty(PropertyName = "endDate")] DateOnly EndDate,
+    [property: JsonProperty(PropertyName = "claimType")] CoverType Type,
+    [property: JsonProperty(PropertyName = "premium")] decimal Premium)
 {
-    [JsonProperty(PropertyName = "id")]
-    public string Id { get; set; }
+    public static CoverReadModel FromDbModel(CoverDbModel dbModel) => new CoverReadModel(
+        dbModel.Id,
+        dbModel.StartDate,
+        dbModel.EndDate,
+        dbModel.Type,
+        dbModel.Premium);
+}
 
-    [JsonProperty(PropertyName = "startDate")]
-    public DateOnly StartDate { get; set; }
-    
-    [JsonProperty(PropertyName = "endDate")]
-    public DateOnly EndDate { get; set; }
-    
-    [JsonProperty(PropertyName = "claimType")]
-    public CoverType Type { get; set; }
-
-    [JsonProperty(PropertyName = "premium")]
-    public decimal Premium { get; set; }
+public record CoverWriteModel
+(
+    [property: JsonProperty(PropertyName = "startDate")] DateOnly StartDate,
+    [property: JsonProperty(PropertyName = "endDate")] DateOnly EndDate,
+    [property: JsonProperty(PropertyName = "claimType")] CoverType Type)
+{
+    public CoverDbModel ToDbModel(Guid id, decimal premium) => new CoverDbModel
+    {
+        Id = id.ToString(),
+        StartDate = StartDate,
+        EndDate = EndDate,
+        Type = Type,
+        Premium = premium
+    };
 }
 
 public enum CoverType
