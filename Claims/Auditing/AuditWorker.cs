@@ -30,12 +30,18 @@ public class AuditWorker : BackgroundService
 
     private async Task FlushAudits()
     {
-        await using var scope = _serviceScopeFactory.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<AuditContext>();
+        var claimAudits = _auditReader.ReadClaimAudits();
+        var coverAudits = _auditReader.ReadCoverAudits();
 
-        context.ClaimAudits.AddRange(_auditReader.ReadClaimAudits());
-        context.CoverAudits.AddRange(_auditReader.ReadCoverAudits());
+        if (claimAudits.Count > 0 && coverAudits.Count > 0)
+        {
+            await using var scope = _serviceScopeFactory.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<AuditContext>();
 
-        await context.SaveChangesAsync();
+            context.ClaimAudits.AddRange(claimAudits);
+            context.CoverAudits.AddRange(coverAudits);
+
+            await context.SaveChangesAsync();
+        }
     }
 }
