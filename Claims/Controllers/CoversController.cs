@@ -3,7 +3,6 @@ using System.Net.Mime;
 using Claims.Auditing;
 using Claims.Services;
 using Claims.Storage;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claims.Controllers;
@@ -23,13 +22,12 @@ public class CoversController : ControllerBase
         _auditer = auditer;
     }
 
-    [HttpHead]
+    [HttpGet("premium")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public NoContentResult ComputePremium(DateOnly startDate, DateOnly endDate, CoverType coverType)
+    public ObjectResult ComputePremium(DateOnly startDate, DateOnly endDate, CoverType coverType)
     {
         var premium = _computePremium.Compute(startDate, endDate, coverType);
-        Request.Headers.Add("X-Premium", premium.ToString(CultureInfo.InvariantCulture));
-        return NoContent();
+        return Ok(new { premium = premium.ToString(CultureInfo.InvariantCulture) });
     }
 
     [HttpGet]
@@ -70,8 +68,10 @@ public class CoversController : ControllerBase
     public async Task<ActionResult> Create(CoverWriteModel cover)
     {
         var coverToCreate = cover.ToDbModel(Guid.NewGuid(), _computePremium.Compute(cover.StartDate, cover.EndDate, cover.Type));
+        _auditer.AuditCover(coverToCreate.Id, "POST");
         var createdCover = await _coverRepository.AddItemAsync(coverToCreate);
-        _auditer.AuditCover(createdCover.Id, "POST");
+        // TODO: Implement audit rollback in case of Cosmos failure
+
         return Ok(CoverReadModel.FromDbModel(createdCover));
     }
 
@@ -79,8 +79,10 @@ public class CoversController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<NoContentResult> Delete(string id)
     {
-        await _coverRepository.DeleteItemAsync(id);
         _auditer.AuditCover(id, "DELETE");
+        await _coverRepository.DeleteItemAsync(id);
+        // TODO: Implement audit rollback in case of Cosmos failure
+
         return NoContent();
     }
 }

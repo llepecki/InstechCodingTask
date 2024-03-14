@@ -13,9 +13,17 @@ public class ComputePremium : IComputePremium
 
         var multiplier = GetMultiplier(coverType);
         var premiumPerDay = 1250 * multiplier;
-        var insuranceLength = endDate.DayNumber - startDate.DayNumber;
+        var totalDays = endDate.DayNumber - startDate.DayNumber;
 
-        return ComputeTotalPremium(insuranceLength, premiumPerDay, coverType);
+        var firstPeriodDays = Math.Min(totalDays, 30);
+        var secondPeriodDays = Math.Min(totalDays - firstPeriodDays, 150);
+        var thirdPeriodDays = totalDays - firstPeriodDays - secondPeriodDays;
+
+        var firstPeriodPremium = firstPeriodDays * premiumPerDay;
+        var secondPeriodPremium = secondPeriodDays * premiumPerDay * (1 - GetDiscountRate(1, coverType));
+        var thirdPeriodPremium = thirdPeriodDays * premiumPerDay * (1 - GetDiscountRate(2, coverType));
+
+        return firstPeriodPremium + secondPeriodPremium + thirdPeriodPremium;
     }
 
     private static decimal GetMultiplier(CoverType coverType) => coverType switch
@@ -26,17 +34,10 @@ public class ComputePremium : IComputePremium
         _ => 1.3m,
     };
 
-    private decimal GetDiscountRate(int dayNumber, CoverType coverType)
+    private decimal GetDiscountRate(int period, CoverType coverType)
     {
-        if (dayNumber < 30) return 0m;
-        if (dayNumber < 180) return coverType == CoverType.Yacht ? 0.05m : 0.02m;
-        if (dayNumber < 365) return coverType == CoverType.Yacht ? 0.08m : 0.03m;
+        if (period == 1) return coverType == CoverType.Yacht ? 0.05m : 0.02m;
+        if (period == 2) return coverType == CoverType.Yacht ? 0.08m : 0.03m;
         return 0m;
     }
-
-    private decimal ComputeTotalPremium(int insuranceLength, decimal premiumPerDay, CoverType coverType) => 
-        Enumerable
-            .Range(0, insuranceLength)
-            .Select(dayNumber => premiumPerDay * (1 - GetDiscountRate(dayNumber, coverType)))
-            .Sum();
 }

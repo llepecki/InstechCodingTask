@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Claims.Storage;
 using Newtonsoft.Json;
 
@@ -23,6 +24,7 @@ public record CoverWriteModel
     [property: JsonProperty(PropertyName = "startDate")] DateOnly StartDate,
     [property: JsonProperty(PropertyName = "endDate")] DateOnly EndDate,
     [property: JsonProperty(PropertyName = "claimType")] CoverType Type)
+    : IValidatableObject
 {
     public CoverDbModel ToDbModel(Guid id, decimal premium) => new CoverDbModel
     {
@@ -32,6 +34,19 @@ public record CoverWriteModel
         Type = Type,
         Premium = premium
     };
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (StartDate >= EndDate)
+        {
+            yield return new ValidationResult("Start date can't be greater than or equal to end date", new[] { nameof(StartDate), nameof(EndDate) });
+        }
+
+        if (EndDate.ToDateTime(TimeOnly.MinValue) - StartDate.ToDateTime(TimeOnly.MinValue) > TimeSpan.FromDays(365))
+        {
+            yield return new ValidationResult("Cover can't be longer than a year", new[] { nameof(StartDate), nameof(EndDate) });
+        }
+    }
 }
 
 public enum CoverType

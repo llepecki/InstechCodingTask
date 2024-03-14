@@ -4,7 +4,6 @@ using Claims.Services;
 using Claims.Storage;
 using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Internal;
 
 var builder = WebApplication.CreateBuilder(args);
 

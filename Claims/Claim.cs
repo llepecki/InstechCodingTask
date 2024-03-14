@@ -1,4 +1,5 @@
-﻿using Claims.Storage;
+﻿using System.ComponentModel.DataAnnotations;
+using Claims.Storage;
 using Newtonsoft.Json;
 
 namespace Claims;
@@ -26,6 +27,7 @@ public record ClaimWriteModel(
     [property: JsonProperty(PropertyName = "name")] string Name,
     [property: JsonProperty(PropertyName = "claimType")] ClaimType Type,
     [property: JsonProperty(PropertyName = "damageCost")] decimal DamageCost)
+    : IValidatableObject
 {
     public ClaimDbModel ToDbModel(Guid id) => new ClaimDbModel
     {
@@ -36,6 +38,16 @@ public record ClaimWriteModel(
         Type = Type,
         DamageCost = DamageCost
     };
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        const decimal maxDamageCost = 100000;
+
+        if (DamageCost > maxDamageCost)
+        {
+            yield return new ValidationResult($"Damage cost can't be more than {maxDamageCost}", new[] { nameof(DamageCost) });
+        }
+    }
 }
 
 public enum ClaimType
