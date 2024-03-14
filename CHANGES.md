@@ -10,6 +10,7 @@
 - `Get` and `GetAll` method so there's no ambiguity for method to generate header link when using `CreatedAtAction`.
 - Used `ActionResult<>` for better communication and documentation.
 - Null checks in controllers redundant - the DI takes care of that.
+- Dry premium computation moved to `/premium` (was conflicting with the other `GET` endpoint).
 - TODO: improve error handling by logging and fine tuning API responses.
 
 ### Task 2
