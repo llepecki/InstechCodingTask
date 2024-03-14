@@ -7,15 +7,12 @@ public class ComputePremiumTests
 {
     private readonly ComputePremium _computePremium;
 
-    public ComputePremiumTests()
-    {
-        _computePremium = new ComputePremium();
-    }
+    public ComputePremiumTests() => _computePremium = new ComputePremium();
 
     [Fact]
     public void Compute_ThrowsException_WhenStartDateIsAfterEndDate()
     {
-        Assert.Throws<ArgumentException>(() => _computePremium.Compute(DateOnly.FromDateTime(DateTime.Now.AddDays(1)), DateOnly.FromDateTime(DateTime.Now), CoverType.Yacht));
+        Assert.Throws<ArgumentException>(() => _computePremium.Compute(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), DateOnly.FromDateTime(DateTime.UtcNow), CoverType.Yacht));
     }
 
     [Theory]
@@ -25,8 +22,8 @@ public class ComputePremiumTests
     [InlineData(CoverType.ContainerShip, 1, 1.3 * 1250)]
     public void Compute_ReturnsCorrectPremium_ForSingleDay(CoverType coverType, int days, decimal expectedPremium)
     {
-        var startDate = DateOnly.FromDateTime(DateTime.Now);
-        var endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(days));
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(days));
 
         var result = _computePremium.Compute(startDate, endDate, coverType);
 
@@ -40,8 +37,8 @@ public class ComputePremiumTests
     [InlineData(CoverType.BulkCarrier, 30, 1.3 * 1250 * 30)]
     public void Compute_ReturnsCorrectPremium_ForFirstPeriod(CoverType coverType, int days, decimal expectedPremium)
     {
-        var startDate = DateOnly.FromDateTime(DateTime.Now);
-        var endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(days));
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(days));
 
         var result = _computePremium.Compute(startDate, endDate, coverType);
 
@@ -54,8 +51,8 @@ public class ComputePremiumTests
     [InlineData(CoverType.Tanker, 180, 1.5 * 1250 * 30 + 1.5 * 1250 * 150 * 0.98)]
     public void Compute_ReturnsCorrectPremium_ForSecondPeriod(CoverType coverType, int days, decimal expectedPremium)
     {
-        var startDate = DateOnly.FromDateTime(DateTime.Now);
-        var endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(days));
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(days));
 
         var result = _computePremium.Compute(startDate, endDate, coverType);
 
