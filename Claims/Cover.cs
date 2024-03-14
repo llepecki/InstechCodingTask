@@ -1,15 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Claims.Storage;
-using Newtonsoft.Json;
 
 namespace Claims;
 
 public record CoverReadModel(
-    [property: JsonProperty(PropertyName = "id")] string Id,
-    [property: JsonProperty(PropertyName = "startDate")] DateOnly StartDate,
-    [property: JsonProperty(PropertyName = "endDate")] DateOnly EndDate,
-    [property: JsonProperty(PropertyName = "claimType")] CoverType Type,
-    [property: JsonProperty(PropertyName = "premium")] decimal Premium)
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("startDate")] DateOnly StartDate,
+    [property: JsonPropertyName("endDate")] DateOnly EndDate,
+    [property: JsonPropertyName("claimType")] CoverType Type,
+    [property: JsonPropertyName("premium")] decimal Premium)
 {
     public static CoverReadModel FromDbModel(CoverDbModel dbModel) => new CoverReadModel(
         dbModel.Id,
@@ -21,9 +21,9 @@ public record CoverReadModel(
 
 public record CoverWriteModel
 (
-    [property: JsonProperty(PropertyName = "startDate")] DateOnly StartDate,
-    [property: JsonProperty(PropertyName = "endDate")] DateOnly EndDate,
-    [property: JsonProperty(PropertyName = "claimType")] CoverType Type)
+    [property: JsonPropertyName("startDate")] DateOnly StartDate,
+    [property: JsonPropertyName("endDate")] DateOnly EndDate,
+    [property: JsonPropertyName("claimType")] CoverType Type)
     : IValidatableObject
 {
     public CoverDbModel ToDbModel(Guid id, decimal premium) => new CoverDbModel

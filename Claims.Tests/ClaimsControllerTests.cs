@@ -1,13 +1,23 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace Claims.Tests
 {
     public class ClaimsControllerTests
     {
+        private readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions();
+
+        public ClaimsControllerTests()
+        {
+            _serializerOptions.Converters.Add(new JsonStringEnumConverter());
+        }
+
+
         [Fact]
         public async Task Get_Claims()
         {
@@ -36,10 +46,10 @@ namespace Claims.Tests
                 DateOnly.FromDateTime(now.AddDays(90)),
                 CoverType.Yacht);
             
-            var newCoverContent = new StringContent(JsonConvert.SerializeObject(newCover));
+            var newCoverContent = new StringContent(JsonSerializer.Serialize(newCover, _serializerOptions), Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync("/Covers", newCoverContent);
-            var createdCover = await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<CoverReadModel>();
+            var createdCover = await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<CoverReadModel>(_serializerOptions);
 
             // Create claim
             var newClaim = new ClaimWriteModel(
@@ -49,10 +59,10 @@ namespace Claims.Tests
                 ClaimType.Fire,
                 999);
 
-            var newClaimContent = new StringContent(JsonConvert.SerializeObject(newClaim));
+            var newClaimContent = new StringContent(JsonSerializer.Serialize(newClaim, _serializerOptions), Encoding.UTF8, "application/json");
 
             response = await client.PostAsync("/Claims", newClaimContent);
-            var createdClaim = await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ClaimReadModel>();
+            var createdClaim = await response.EnsureSuccessStatusCode().Content.ReadFromJsonAsync<ClaimReadModel>(_serializerOptions);
 
             Assert.Equal("TestClaim", createdClaim.Name);
             Assert.Equal(ClaimType.Fire, createdClaim.Type);

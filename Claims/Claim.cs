@@ -1,16 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Claims.Storage;
-using Newtonsoft.Json;
 
 namespace Claims;
 
 public record ClaimReadModel(
-    [property: JsonProperty(PropertyName = "id")] string Id,
-    [property: JsonProperty(PropertyName = "coverId")] string CoverId,
-    [property: JsonProperty(PropertyName = "created")] DateTime Created,
-    [property: JsonProperty(PropertyName = "name")] string Name,
-    [property: JsonProperty(PropertyName = "claimType")] ClaimType Type,
-    [property: JsonProperty(PropertyName = "damageCost")] decimal DamageCost)
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("coverId")] string CoverId,
+    [property: JsonPropertyName("created")] DateTime Created,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("claimType")] ClaimType Type,
+    [property: JsonPropertyName("damageCost")] decimal DamageCost)
 {
     public static ClaimReadModel FromDbModel(ClaimDbModel dbModel) => new ClaimReadModel(
         dbModel.Id,
@@ -22,11 +22,11 @@ public record ClaimReadModel(
 }
 
 public record ClaimWriteModel(
-    [property: JsonProperty(PropertyName = "coverId")] string CoverId,
-    [property: JsonProperty(PropertyName = "created")] DateTime Created,
-    [property: JsonProperty(PropertyName = "name")] string Name,
-    [property: JsonProperty(PropertyName = "claimType")] ClaimType Type,
-    [property: JsonProperty(PropertyName = "damageCost")] decimal DamageCost)
+    [property: JsonPropertyName("coverId")] string CoverId,
+    [property: JsonPropertyName("created")] DateTime Created,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("claimType")] ClaimType Type,
+    [property: JsonPropertyName("damageCost")] decimal DamageCost)
     : IValidatableObject
 {
     public ClaimDbModel ToDbModel(Guid id) => new ClaimDbModel
