@@ -1,11 +1,11 @@
 ### Task 1
 
-- Divided models into write models, read models and db models. These models should live separately in order to have control over what is shared with the outside world. The second thing is that write models (used in POST) have their ids filled by the infrastructure so the client should be mislead that they should provide the id.
-- Mapping taken away from the controllers (`ToDbModel`, `FromDbModel`)
+- Divided models into write models, read models and db models. These models should live separately in order to have control over what is shared with the outside world. The second thing is that write models (used in `POST`s) have their ids filled by the infrastructure so the client shouldn't be mislead that they have to provide the id.
+- Mapping taken away from the controllers (`ToDbModel`, `FromDbModel`).
 - Created generic `CosmosRepository` to encapsulate access to the database (introduced `ICosmosEntity`).
 - Premium computation moved to a separate service.
 - Added Swagger documentation.
-- Changes some of the endpoints to make the API more RESTfull: `404 NotFound` when the resource is missing, `201 Created` (with link to the resource in headers and the resource itself in body) when new resource is created, `204 NoContent` when no resource is found and on deletion.
+- Changed some of the endpoints to make the API more RESTfull: `404 NotFound` when the resource is missing, `201 Created` (with link to the resource in headers and the resource itself in body) when new resource is created, `204 NoContent` when no resource is found and on deletion.
 - Dropped `Async` suffix from controller methods because `CreatedAtAction` has problem generating the reponse if method name end with `Async` (weird, right?).
 - `Get` and `GetAll` method so there's no ambiguity for method to generate header link when using `CreatedAtAction`.
 - Used `ActionResult<>` for better communication and documentation.
@@ -16,7 +16,7 @@
 ### Task 2
 
 - Simple validations done by implementing `IValidatableObject` interface in write models.
-- Claim against Cover implemented in controller.
+- Claim against Cover validation implemented in the controller.
 - TODO: Consider using `FluentValidations` to gather all validations in one place.
 
 ### Task 3
@@ -29,7 +29,7 @@
 - TODO: similar test for covers, test `BadRequst` in case of invalid data.
 
 ### Task 5
-- Told Github Copilot to write relevant tests first and then implemented changes in the `ComputePremium` (guess it's AI TDD).
+- First told Github Copilot to write relevant tests based on the description and then implemented changes in the `ComputePremium` (guess it's AI TDD).
 
 ### Other
 - You do know that I'd never commit straight to `master` in the real life, right?
