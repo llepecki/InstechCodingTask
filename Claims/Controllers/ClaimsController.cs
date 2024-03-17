@@ -68,20 +68,36 @@ public class ClaimsController : ControllerBase
         }
 
         var claimToCreate = claim.ToDbModel(Guid.NewGuid());
-        _auditer.AuditClaim(claimToCreate.Id, "POST");
-        var createdClaim = await _claimRepository.AddItemAsync(claimToCreate);
-        // TODO: Implement audit rollback in case of Cosmos failure
-        
-        return CreatedAtAction(nameof(Get), new { id = createdClaim.Id }, ClaimReadModel.FromDbModel(createdClaim));
+
+        try
+        {
+            _auditer.AuditClaim(claimToCreate.Id, RequestType.Post, RequestStage.Started);
+            var createdClaim = await _claimRepository.AddItemAsync(claimToCreate);
+            _auditer.AuditClaim(claimToCreate.Id, RequestType.Post, RequestStage.Suceeded);
+            return CreatedAtAction(nameof(Get), new { id = createdClaim.Id }, ClaimReadModel.FromDbModel(createdClaim));
+        }
+        catch
+        {
+             _auditer.AuditClaim(claimToCreate.Id, RequestType.Post, RequestStage.Failed);
+            throw;
+        }
     }
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<NoContentResult> Delete(string id)
     {
-        _auditer.AuditClaim(id, "DELETE");
-        await _claimRepository.DeleteItemAsync(id);
-        // TODO: Implement audit rollback in case of Cosmos failure
+        try
+        {
+            _auditer.AuditClaim(id, RequestType.Delete, RequestStage.Started);
+            await _claimRepository.DeleteItemAsync(id);
+            _auditer.AuditClaim(id, RequestType.Delete, RequestStage.Suceeded);
+        }
+        catch
+        {
+             _auditer.AuditClaim(id, RequestType.Delete, RequestStage.Failed);
+            throw;
+        }
 
         return NoContent();
     }

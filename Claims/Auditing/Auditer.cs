@@ -2,11 +2,24 @@ using System.Collections.Concurrent;
 
 namespace Claims.Auditing;
 
+public enum RequestType
+{
+    Post,
+    Delete
+}
+
+public enum RequestStage
+{
+    Started,
+    Suceeded,
+    Failed
+}
+
 public interface IAuditer
 {
-    void AuditClaim(string id, string httpRequestType);
+    void AuditClaim(string id, RequestType requestType, RequestStage requestStage);
 
-    void AuditCover(string id, string httpRequestType);
+    void AuditCover(string id, RequestType requestType, RequestStage requestStage);
 }
 
 public interface IAuditReader
@@ -21,18 +34,18 @@ public class Auditer : IAuditer, IAuditReader
     private readonly ConcurrentQueue<ClaimAudit> _claimAudits = new();
     private readonly ConcurrentQueue<CoverAudit> _coverAudits = new();
 
-    public void AuditClaim(string id, string httpRequestType) => _claimAudits.Enqueue(new ClaimAudit
+    public void AuditClaim(string id, RequestType requestType, RequestStage requestStage) => _claimAudits.Enqueue(new ClaimAudit
     {
         ClaimId = id,
         Created = DateTime.UtcNow,
-        HttpRequestType = httpRequestType
+        HttpRequestType = ToHttpRequestType(requestType, requestStage)
     });
 
-    public void AuditCover(string id, string httpRequestType) => _coverAudits.Enqueue(new CoverAudit
+    public void AuditCover(string id, RequestType requestType, RequestStage requestStage) => _coverAudits.Enqueue(new CoverAudit
     {
         CoverId = id,
         Created = DateTime.UtcNow,
-        HttpRequestType = httpRequestType
+        HttpRequestType = ToHttpRequestType(requestType, requestStage)
     });
 
     public IReadOnlyCollection<ClaimAudit> ReadClaimAudits()
@@ -60,4 +73,7 @@ public class Auditer : IAuditer, IAuditReader
 
         return GetCoverAuditsInner().ToArray();
     }
+
+    private static string ToHttpRequestType(RequestType requestType, RequestStage requestStage) =>
+        $"{requestType.ToString("g").ToUpper()}_{requestStage.ToString("g").ToUpper()}";
 }

@@ -68,21 +68,36 @@ public class CoversController : ControllerBase
     public async Task<ActionResult> Create(CoverWriteModel cover)
     {
         var coverToCreate = cover.ToDbModel(Guid.NewGuid(), _computePremium.Compute(cover.StartDate, cover.EndDate, cover.Type));
-        _auditer.AuditCover(coverToCreate.Id, "POST");
-        var createdCover = await _coverRepository.AddItemAsync(coverToCreate);
-        // TODO: Implement audit rollback in case of Cosmos failure
 
-        return Ok(CoverReadModel.FromDbModel(createdCover));
+        try
+        {
+            _auditer.AuditCover(coverToCreate.Id, RequestType.Post, RequestStage.Started);
+            var createdCover = await _coverRepository.AddItemAsync(coverToCreate);
+            _auditer.AuditCover(coverToCreate.Id, RequestType.Post, RequestStage.Suceeded);
+            return Ok(CoverReadModel.FromDbModel(createdCover));
+        }
+        catch
+        {
+            _auditer.AuditCover(coverToCreate.Id, RequestType.Post, RequestStage.Failed);
+            throw;
+        }
     }
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<NoContentResult> Delete(string id)
     {
-        _auditer.AuditCover(id, "DELETE");
-        await _coverRepository.DeleteItemAsync(id);
-        // TODO: Implement audit rollback in case of Cosmos failure
-
-        return NoContent();
+        try
+        {
+            _auditer.AuditCover(id, RequestType.Delete, RequestStage.Started);
+            await _coverRepository.DeleteItemAsync(id);
+            _auditer.AuditCover(id, RequestType.Delete, RequestStage.Suceeded);
+            return NoContent();
+        }
+        catch
+        {
+            _auditer.AuditCover(id, RequestType.Delete, RequestStage.Failed);
+            throw;
+        }
     }
 }
