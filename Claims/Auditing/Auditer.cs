@@ -17,9 +17,9 @@ public enum RequestStage
 
 public interface IAuditer
 {
-    void AuditClaim(string id, RequestType requestType, RequestStage requestStage);
+    void AuditClaim(Guid id, RequestType requestType, RequestStage requestStage);
 
-    void AuditCover(string id, RequestType requestType, RequestStage requestStage);
+    void AuditCover(Guid id, RequestType requestType, RequestStage requestStage);
 }
 
 public interface IAuditReader
@@ -34,14 +34,14 @@ public class Auditer : IAuditer, IAuditReader
     private readonly ConcurrentQueue<ClaimAudit> _claimAudits = new();
     private readonly ConcurrentQueue<CoverAudit> _coverAudits = new();
 
-    public void AuditClaim(string id, RequestType requestType, RequestStage requestStage) => _claimAudits.Enqueue(new ClaimAudit
+    public void AuditClaim(Guid id, RequestType requestType, RequestStage requestStage) => _claimAudits.Enqueue(new ClaimAudit
     {
         ClaimId = id,
         Created = DateTime.UtcNow,
         HttpRequestType = ToHttpRequestType(requestType, requestStage)
     });
 
-    public void AuditCover(string id, RequestType requestType, RequestStage requestStage) => _coverAudits.Enqueue(new CoverAudit
+    public void AuditCover(Guid id, RequestType requestType, RequestStage requestStage) => _coverAudits.Enqueue(new CoverAudit
     {
         CoverId = id,
         Created = DateTime.UtcNow,

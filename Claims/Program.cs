@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Claims.Auditing;
-using Claims.Services;
+using Claims.Domain;
 using Claims.Storage;
 using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +18,8 @@ string databaseName = builder.Configuration.GetSection("CosmosDB").GetValue<stri
 builder.Services
     .AddSingleton(new CosmosClient(account, key))
     .AddSingleton(p => new CosmosRepository<ClaimDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Claim"))
-    .AddSingleton(p => new CosmosRepository<CoverDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Cover"));
-
-builder.Services.AddDbContext<AuditContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddSingleton<IComputePremium, ComputePremium>();
+    .AddSingleton(p => new CosmosRepository<CoverDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Cover"))
+    .AddDbContext<AuditContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services
     .AddHostedService<AuditWorker>()
@@ -61,4 +59,4 @@ using (var scope = app.Services.CreateScope())
 
 await app.RunAsync();
 
-public partial class Program { }
+public abstract partial class Program { }

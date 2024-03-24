@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Net.Mime;
 using Claims.Auditing;
-using Claims.Services;
+using Claims.Domain;
 using Claims.Storage;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,14 +11,12 @@ namespace Claims.Controllers;
 [Route("[controller]")]
 public class CoversController : ControllerBase
 {
-    private readonly CosmosRepository<CoverDbModel> _coverRepository;
-    private readonly IComputePremium _computePremium;
+    private readonly ICoverRepository _coverRepository;
     private readonly IAuditer _auditer;
 
-    public CoversController(CosmosRepository<CoverDbModel> coverRepository, IComputePremium computePremium, IAuditer auditer)
+    public CoversController(ICoverRepository coverRepository, IAuditer auditer)
     {
         _coverRepository = coverRepository;
-        _computePremium = computePremium;
         _auditer = auditer;
     }
 
@@ -26,7 +24,7 @@ public class CoversController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ObjectResult ComputePremium(DateOnly startDate, DateOnly endDate, CoverType coverType)
     {
-        var premium = _computePremium.Compute(startDate, endDate, coverType);
+        var premium = Domain.ComputePremium.Compute(startDate, endDate, coverType);
         return Ok(new { premium = premium.ToString(CultureInfo.InvariantCulture) });
     }
 
@@ -36,45 +34,65 @@ public class CoversController : ControllerBase
     [Produces(MediaTypeNames.Application.Json, Type = typeof(IEnumerable<ClaimReadModel>))]
     public async Task<ActionResult<IEnumerable<CoverReadModel>>> GetAll(CancellationToken cancellationToken)
     {
-        var claims = await _coverRepository.GetItemsAsync(cancellationToken);
+        var covers = await _coverRepository.GetAll(cancellationToken);
 
-        if (claims.Count == 0)
+        if (covers.Count == 0)
         {
             return NoContent();
         }
 
-        return Ok(claims.Select(CoverReadModel.FromDbModel));
+        return Ok(covers.Select(claim => claim.ToReadModel()));
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [Produces(MediaTypeNames.Application.Json, Type = typeof(CoverReadModel))]
-    public async Task<ActionResult<CoverReadModel>> Get(string id, CancellationToken cancellationToken)
+    public async Task<ActionResult<CoverReadModel>> Get(Guid id, CancellationToken cancellationToken)
     {
-        var claim = await _coverRepository.GetItemAsync(id, cancellationToken);
+        var claim = await _coverRepository.Get(id, cancellationToken);
         
-        if (claim == null)
+        if (claim.HasNoValue)
         {
             return NotFound();
         }
 
-        return Ok(CoverReadModel.FromDbModel(claim));
+        return Ok(claim.Value.ToReadModel());
     }
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Produces(MediaTypeNames.Application.Json, Type = typeof(CoverReadModel))]
-    public async Task<ActionResult> Create(CoverWriteModel cover)
+    public async Task<ActionResult> Create(CoverWriteModel coverWriteModel)
     {
-        var coverToCreate = cover.ToDbModel(Guid.NewGuid(), _computePremium.Compute(cover.StartDate, cover.EndDate, cover.Type));
+        var createCoverResult = Cover.Create(
+            coverWriteModel.StartDate,
+            coverWriteModel.EndDate,
+            coverWriteModel.Type);
+
+        if (createCoverResult.IsFailure)
+        {
+            ModelState.AddErrors(createCoverResult.Error);
+            return BadRequest(ModelState);
+        }
+
+        var coverToCreate = createCoverResult.Value;
 
         try
         {
             _auditer.AuditCover(coverToCreate.Id, RequestType.Post, RequestStage.Started);
-            var createdCover = await _coverRepository.AddItemAsync(coverToCreate);
+            var createdCoverResult = await _coverRepository.Upsert(coverToCreate);
+
+            if (createdCoverResult.IsFailure)
+            {
+                ModelState.AddErrors(createdCoverResult.Error);
+                _auditer.AuditCover(coverToCreate.Id, RequestType.Post, RequestStage.Failed);
+                return BadRequest(ModelState);
+            }
+            
             _auditer.AuditCover(coverToCreate.Id, RequestType.Post, RequestStage.Suceeded);
-            return Ok(CoverReadModel.FromDbModel(createdCover));
+            return CreatedAtAction(nameof(Get), new { id = createdCoverResult.Value.Id }, createdCoverResult.Value.ToReadModel());
         }
         catch
         {
@@ -85,12 +103,18 @@ public class CoversController : ControllerBase
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<NoContentResult> Delete(string id)
+    public async Task<NoContentResult> Delete(Guid id)
     {
         try
         {
             _auditer.AuditCover(id, RequestType.Delete, RequestStage.Started);
-            await _coverRepository.DeleteItemAsync(id);
+            var cover = await _coverRepository.Get(id, CancellationToken.None);
+            
+            if (cover.HasValue)
+            {
+                await _coverRepository.Delete(cover.Value);
+            }
+
             _auditer.AuditCover(id, RequestType.Delete, RequestStage.Suceeded);
             return NoContent();
         }

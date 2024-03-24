@@ -49,7 +49,7 @@ public class CosmosRepository<T> where T : class, ICosmosEntity
         }
     }
 
-    public async Task<T> AddItemAsync(T item)
+    public async Task<T> UpsertItemAsync(T item)
     {
         var response = await _container.CreateItemAsync(item, new PartitionKey(item.Id));
         return response.Resource;

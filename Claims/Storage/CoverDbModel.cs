@@ -1,3 +1,4 @@
+using Claims.Domain;
 using Newtonsoft.Json;
 
 namespace Claims.Storage;

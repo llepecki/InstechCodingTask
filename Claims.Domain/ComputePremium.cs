@@ -1,13 +1,8 @@
-namespace Claims.Services;
+namespace Claims.Domain;
 
-public interface IComputePremium
+public static class ComputePremium
 {
-    decimal Compute(DateOnly startDate, DateOnly endDate, CoverType coverType);
-}
-
-public class ComputePremium : IComputePremium
-{
-    public decimal Compute(DateOnly startDate, DateOnly endDate, CoverType coverType)
+    public static decimal Compute(DateOnly startDate, DateOnly endDate, CoverType coverType)
     {
         if (startDate > endDate) throw new ArgumentException("Start date must be before end date", nameof(startDate));
 
@@ -34,7 +29,7 @@ public class ComputePremium : IComputePremium
         _ => 1.3m,
     };
 
-    private decimal GetDiscountRate(int period, CoverType coverType)
+    private static decimal GetDiscountRate(int period, CoverType coverType)
     {
         if (period == 1) return coverType == CoverType.Yacht ? 0.05m : 0.02m;
         if (period == 2) return coverType == CoverType.Yacht ? 0.08m : 0.03m;

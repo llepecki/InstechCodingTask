@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Claims.Domain;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -16,7 +17,6 @@ public class ClaimsControllerTests
     {
         _serializerOptions.Converters.Add(new JsonStringEnumConverter());
     }
-
 
     [Fact]
     public async Task Get_Claims()
@@ -69,7 +69,7 @@ public class ClaimsControllerTests
         Assert.Equal(999, createdClaim.DamageCost);
 
         // Delete claim
-        response = await client.DeleteAsync($"/Claims/{createdClaim.Id}");
+        _ = await client.DeleteAsync($"/Claims/{createdClaim.Id}");
         response = await client.GetAsync($"/Claims/{createdClaim.Id}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

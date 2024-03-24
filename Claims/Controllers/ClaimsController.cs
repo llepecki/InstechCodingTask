@@ -1,5 +1,6 @@
 using System.Net.Mime;
 using Claims.Auditing;
+using Claims.Domain;
 using Claims.Storage;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,14 +10,11 @@ namespace Claims.Controllers;
 [Route("[controller]")]
 public class ClaimsController : ControllerBase
 {
-    private readonly CosmosRepository<ClaimDbModel> _claimRepository;
-    private readonly CosmosRepository<CoverDbModel> _coverRepository;
+    private readonly IClaimRepository _claimRepository;
+    private readonly ICoverRepository _coverRepository;
     private readonly IAuditer _auditer;
 
-    public ClaimsController(
-        CosmosRepository<ClaimDbModel> claimRepository,
-        CosmosRepository<CoverDbModel> coverRepository,
-        IAuditer auditer)
+    public ClaimsController(IClaimRepository claimRepository, ICoverRepository coverRepository, IAuditer auditer)
     {
         _claimRepository = claimRepository;
         _coverRepository = coverRepository;
@@ -29,52 +27,75 @@ public class ClaimsController : ControllerBase
     [Produces(MediaTypeNames.Application.Json, Type = typeof(IEnumerable<ClaimReadModel>))]
     public async Task<ActionResult<IEnumerable<ClaimReadModel>>> GetAll(CancellationToken cancellationToken)
     {
-        var claims = await _claimRepository.GetItemsAsync(cancellationToken);
+        var claims = await _claimRepository.GetAll(cancellationToken);
 
         if (claims.Count == 0)
         {
             return NoContent();
         }
 
-        return Ok(claims.Select(ClaimReadModel.FromDbModel));
+        return Ok(claims.Select(claim => claim.ToReadModel()));
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [Produces(MediaTypeNames.Application.Json, Type = typeof(ClaimReadModel))]
-    public async Task<ActionResult<ClaimReadModel>> Get(string id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClaimReadModel>> Get(Guid id, CancellationToken cancellationToken)
     {
-        var claim = await _claimRepository.GetItemAsync(id, cancellationToken);
+        var claim = await _claimRepository.Get(id, cancellationToken);
         
-        if (claim == null)
+        if (claim.HasNoValue)
         {
             return NotFound();
         }
 
-        return Ok(ClaimReadModel.FromDbModel(claim));
+        return Ok(claim.Value.ToReadModel());
     }
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [Produces(MediaTypeNames.Application.Json, Type = typeof(ClaimReadModel))]
-    public async Task<ActionResult<ClaimReadModel>> Create(ClaimWriteModel claim)
+    public async Task<ActionResult<ClaimReadModel>> Create(ClaimWriteModel claimWriteModel)
     {
-        await ValidateClaimAgainstCover(claim);
+        var coverResult = await _coverRepository.Get(claimWriteModel.CoverId, CancellationToken.None);
 
-        if (!ModelState.IsValid)
+        if (coverResult.HasNoValue)
         {
+            ModelState.AddModelError(nameof(claimWriteModel.CoverId), "Cover not found");
             return BadRequest(ModelState);
         }
 
-        var claimToCreate = claim.ToDbModel(Guid.NewGuid());
+        var createClaimResult = Claim.Create(
+            coverResult.Value,
+            claimWriteModel.Created,
+            claimWriteModel.Name,
+            claimWriteModel.Type,
+            claimWriteModel.DamageCost);
+
+        if (createClaimResult.IsFailure)
+        {
+            ModelState.AddErrors(createClaimResult.Error);
+            return BadRequest(ModelState);
+        }
+
+        var claimToCreate = createClaimResult.Value;
 
         try
         {
             _auditer.AuditClaim(claimToCreate.Id, RequestType.Post, RequestStage.Started);
-            var createdClaim = await _claimRepository.AddItemAsync(claimToCreate);
+            var createdClaimResult = await _claimRepository.Upsert(claimToCreate);
+            
+            if (createdClaimResult.IsFailure)
+            {
+                ModelState.AddErrors(createdClaimResult.Error);
+                _auditer.AuditCover(claimToCreate.Id, RequestType.Post, RequestStage.Failed);
+                return BadRequest(ModelState);
+            }
+            
             _auditer.AuditClaim(claimToCreate.Id, RequestType.Post, RequestStage.Suceeded);
-            return CreatedAtAction(nameof(Get), new { id = createdClaim.Id }, ClaimReadModel.FromDbModel(createdClaim));
+            return CreatedAtAction(nameof(Get), new { id = createdClaimResult.Value.Id }, createClaimResult.Value.ToReadModel());
         }
         catch
         {
@@ -85,12 +106,18 @@ public class ClaimsController : ControllerBase
 
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<NoContentResult> Delete(string id)
+    public async Task<NoContentResult> Delete(Guid id)
     {
         try
         {
             _auditer.AuditClaim(id, RequestType.Delete, RequestStage.Started);
-            await _claimRepository.DeleteItemAsync(id);
+            var claim = await _claimRepository.Get(id, CancellationToken.None);
+            
+            if (claim.HasValue)
+            {
+                await _claimRepository.Delete(claim.Value);
+            }
+
             _auditer.AuditClaim(id, RequestType.Delete, RequestStage.Suceeded);
         }
         catch
@@ -100,24 +127,5 @@ public class ClaimsController : ControllerBase
         }
 
         return NoContent();
-    }
-
-    private async Task ValidateClaimAgainstCover(ClaimWriteModel claim)
-    {
-        var cover = await _coverRepository.GetItemAsync(claim.CoverId, CancellationToken.None);
-
-        if (cover == null)
-        {
-            ModelState.AddModelError(nameof(claim.CoverId), "Cover not found");
-            return;
-        }
-
-        DateTime coverPeriodStart = cover.StartDate.ToDateTime(TimeOnly.MinValue);
-        DateTime coverPeriodEnd = cover.EndDate.ToDateTime(TimeOnly.MaxValue);
-
-        if (claim.Created < coverPeriodStart || claim.Created > coverPeriodEnd)
-        {
-            ModelState.AddModelError(nameof(claim.Created), $"Claim date is not within cover period (from {coverPeriodStart} to {coverPeriodEnd})");
-        }
     }
 }

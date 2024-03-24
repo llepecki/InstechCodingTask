@@ -1,18 +1,13 @@
 using Xunit;
-using Claims.Services;
 
-namespace Claims.Tests;
+namespace Claims.Domain.Tests;
 
 public class ComputePremiumTests
 {
-    private readonly ComputePremium _computePremium;
-
-    public ComputePremiumTests() => _computePremium = new ComputePremium();
-
     [Fact]
     public void Compute_ThrowsException_WhenStartDateIsAfterEndDate()
     {
-        Assert.Throws<ArgumentException>(() => _computePremium.Compute(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), DateOnly.FromDateTime(DateTime.UtcNow), CoverType.Yacht));
+        Assert.Throws<ArgumentException>(() => ComputePremium.Compute(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), DateOnly.FromDateTime(DateTime.UtcNow), CoverType.Yacht));
     }
 
     [Theory]
@@ -25,7 +20,7 @@ public class ComputePremiumTests
         var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(days));
 
-        var result = _computePremium.Compute(startDate, endDate, coverType);
+        var result = ComputePremium.Compute(startDate, endDate, coverType);
 
         Assert.Equal(expectedPremium, result);
     }
@@ -40,7 +35,7 @@ public class ComputePremiumTests
         var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(days));
 
-        var result = _computePremium.Compute(startDate, endDate, coverType);
+        var result = ComputePremium.Compute(startDate, endDate, coverType);
 
         Assert.Equal(expectedPremium, result);
     }
@@ -54,7 +49,7 @@ public class ComputePremiumTests
         var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var endDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(days));
 
-        var result = _computePremium.Compute(startDate, endDate, coverType);
+        var result = ComputePremium.Compute(startDate, endDate, coverType);
 
         Assert.Equal(expectedPremium, result);
     }
