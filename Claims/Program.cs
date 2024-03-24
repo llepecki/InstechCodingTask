@@ -19,6 +19,8 @@ builder.Services
     .AddSingleton(new CosmosClient(account, key))
     .AddSingleton(p => new CosmosRepository<ClaimDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Claim"))
     .AddSingleton(p => new CosmosRepository<CoverDbModel>(p.GetRequiredService<CosmosClient>(), databaseName, "Cover"))
+    .AddSingleton<IClaimRepository, ClaimRepository>()
+    .AddSingleton<ICoverRepository, CoverRepository>()
     .AddDbContext<AuditContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services

@@ -19,7 +19,7 @@ public record Cover
         
         if (startDate >= endDate)
         {
-            errors.Add($"{startDate}_{endDate}", "Start date can't be greater than or equal to end date");
+            errors.Add($"{nameof(startDate)}_{nameof(endDate)}", "Start date can't be greater than or equal to end date");
         }
 
         if (endDate.ToDateTime(TimeOnly.MinValue) - startDate.ToDateTime(TimeOnly.MinValue) > TimeSpan.FromDays(365))
