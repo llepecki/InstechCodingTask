@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using Claims.Domain;
 
-namespace Claims;
+namespace Claims.Controllers;
 
 public record CoverReadModel(
     [property: JsonPropertyName("id")] Guid Id,

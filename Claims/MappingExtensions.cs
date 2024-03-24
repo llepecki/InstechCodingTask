@@ -1,6 +1,8 @@
+using Claims.Controllers;
 using Claims.Domain;
+using Claims.Storage;
 
-namespace Claims.Storage;
+namespace Claims;
 
 public static class MappingExtensions
 {
